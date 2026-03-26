@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MORPH STUDIO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #050507;
+    --surface:  #0d0d12;
+    --card:     #111118;
+    --border:   #1e1e2a;
+    --accent:   #c8ff00;
+    --accent2:  #ff4d6d;
+    --text:     #e8e8f0;
+    --muted:    #5a5a72;
+    --font-display: 'Bebas Neue', sans-serif;
+    --font-body:    'DM Sans', sans-serif;
+    --font-mono:    'JetBrains Mono', monospace;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Noise grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.6;
+  }
+
+  /* ── Header ── */
+  header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2rem;
+    height: 60px;
+    background: rgba(5,5,7,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    text-shadow: 0 0 30px rgba(200,255,0,0.4);
+  }
+
+  .logo span { color: var(--text); }
+
+  .header-badge {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    border-radius: 2px;
+    letter-spacing: 0.1em;
+  }
+
+  /* ── Layout ── */
+  .wrapper {
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    min-height: 100vh;
+    padding-top: 60px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Left panel ── */
+  .panel {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 1.25rem;
+    padding-bottom: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    overflow-y: auto;
+    height: calc(100vh - 60px);
+    position: sticky;
+    top: 60px;
+  }
+
+  .panel-title {
+    font-family: var(--font-display);
+    font-size: 0.85rem;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+  }
+
+  /* ── Drop zone ── */
+  .dropzone {
+    border: 1.5px dashed var(--border);
+    border-radius: 8px;
+    padding: 1.25rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    background: var(--card);
+  }
+
+  .dropzone:hover, .dropzone.drag-over {
+    border-color: var(--accent);
+    background: rgba(200,255,0,0.03);
+  }
+
+  .dropzone input { display: none; }
+
+  .drop-icon {
+    font-size: 1.4rem;
+    margin-bottom: 0.4rem;
+    display: block;
+    filter: grayscale(0.5);
+  }
+
+  .drop-text {
+    font-size: 0.78rem;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .drop-text strong { color: var(--accent); }
+
+  #preview-wrap {
+    display: none;
+    position: relative;
+    border-radius: 6px;
+    overflow: hidden;
+    aspect-ratio: 16/9;
+  }
+
+  #preview-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .preview-remove {
+    position: absolute;
+    top: 8px; right: 8px;
+    background: rgba(0,0,0,0.7);
+    border: 1px solid var(--border);
+    color: var(--text);
+    width: 28px; height: 28px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+
+  .preview-remove:hover { background: var(--accent2); }
+
+  /* ── Form fields ── */
+  .field { display: flex; flex-direction: column; gap: 0.35rem; }
+
+  label {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  textarea, select {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    padding: 0.75rem 1rem;
+    transition: border-color 0.2s;
+    outline: none;
+    width: 100%;
+  }
+
+  textarea { resize: vertical; min-height: 68px; line-height: 1.6; }
+
+  textarea:focus, select:focus { border-color: var(--accent); }
+
+  /* ── Toggle row ── */
+  .toggle-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+  }
+
+  .toggle-group { display: flex; flex-direction: column; gap: 0.5rem; }
+
+  .pills {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+
+  .pill {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    padding: 3px 10px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+
+  .pill:hover { border-color: var(--accent); color: var(--accent); }
+
+  .pill.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+    font-weight: 600;
+  }
+
+  /* ── Model selector ── */
+  .model-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.4rem;
+  }
+
+  .model-card {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.5rem 0.65rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: var(--card);
+  }
+
+  .model-card:hover { border-color: var(--muted); }
+
+  .model-card.active {
+    border-color: var(--accent);
+    background: rgba(200,255,0,0.05);
+  }
+
+  .model-card .mc-name {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    margin-bottom: 3px;
+  }
+
+  .model-card .mc-desc {
+    font-size: 0.66rem;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  /* ── Submit ── */
+  .btn-generate {
+    width: 100%;
+    padding: 0.75rem;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 6px;
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    letter-spacing: 0.15em;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .btn-generate:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 30px rgba(200,255,0,0.25);
+  }
+
+  .btn-generate:active { transform: translateY(0); }
+
+  .btn-generate:disabled {
+    background: var(--border);
+    color: var(--muted);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  /* ── Right panel: jobs ── */
+  .jobs-area {
+    padding: 2rem;
+    overflow-y: auto;
+    height: calc(100vh - 60px);
+  }
+
+  .jobs-header {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .jobs-title {
+    font-family: var(--font-display);
+    font-size: 1.8rem;
+    letter-spacing: 0.08em;
+    color: var(--text);
+  }
+
+  .jobs-count {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+
+  /* ── Empty state ── */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 60%;
+    gap: 1rem;
+    opacity: 0.35;
+    user-select: none;
+  }
+
+  .empty-state .big-icon { font-size: 4rem; }
+
+  .empty-state p {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+  }
+
+  /* ── Job cards ── */
+  .jobs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+
+  .job-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    animation: fadeUp 0.4s ease both;
+    transition: border-color 0.2s;
+  }
+
+  .job-card:hover { border-color: var(--muted); }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* thumb */
+  .job-thumb {
+    aspect-ratio: 16/9;
+    background: var(--surface);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .job-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    opacity: 0.6;
+  }
+
+  .job-thumb video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .job-status-badge {
+    position: absolute;
+    top: 10px; left: 10px;
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    padding: 4px 10px;
+    border-radius: 2px;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+
+  .badge-running  { background: rgba(200,255,0,0.15); color: var(--accent); border: 1px solid rgba(200,255,0,0.3); }
+  .badge-done     { background: rgba(0,255,128,0.15); color: #00ff80;       border: 1px solid rgba(0,255,128,0.3); }
+  .badge-error    { background: rgba(255,77,109,0.15);color: var(--accent2); border: 1px solid rgba(255,77,109,0.3); }
+
+  /* progress bar */
+  .job-progress {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--border);
+  }
+
+  .job-progress-fill {
+    height: 100%;
+    background: var(--accent);
+    transition: width 0.5s ease;
+    box-shadow: 0 0 8px rgba(200,255,0,0.6);
+  }
+
+  /* card body */
+  .job-body { padding: 1rem; }
+
+  .job-prompt {
+    font-size: 0.85rem;
+    color: var(--text);
+    margin-bottom: 0.5rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .job-meta {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+  }
+
+  .meta-tag {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    color: var(--muted);
+    background: var(--surface);
+    padding: 3px 8px;
+    border-radius: 2px;
+    border: 1px solid var(--border);
+  }
+
+  /* log */
+  .job-log {
+    background: var(--surface);
+    border-radius: 4px;
+    padding: 0.6rem 0.75rem;
+    max-height: 100px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .log-line {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+    line-height: 1.8;
+    animation: logIn 0.2s ease;
+  }
+
+  @keyframes logIn {
+    from { opacity: 0; transform: translateX(-4px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .log-line.latest { color: var(--accent); }
+
+  /* video link */
+  .btn-watch {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.6rem;
+    margin-top: 0.75rem;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-watch:hover {
+    background: var(--accent);
+    color: #000;
+  }
+
+  /* expand icon on thumb */
+  .expand-btn {
+    position: absolute;
+    bottom: 10px; right: 10px;
+    background: rgba(0,0,0,0.6);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #fff;
+    width: 30px; height: 30px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+    backdrop-filter: blur(4px);
+  }
+  .expand-btn:hover { background: var(--accent); color: #000; border-color: var(--accent); }
+
+  /* modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.92);
+    z-index: 999;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(8px);
+    animation: fadeIn 0.2s ease;
+  }
+  .modal-overlay.open { display: flex; }
+
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .modal-inner {
+    position: relative;
+    width: 90vw;
+    max-width: 1100px;
+    aspect-ratio: 16/9;
+    background: #000;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 0 80px rgba(0,0,0,0.8);
+    animation: scaleIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  @keyframes scaleIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+  .modal-inner video {
+    width: 100%; height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 14px; right: 14px;
+    background: rgba(0,0,0,0.7);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #fff;
+    width: 36px; height: 36px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+    z-index: 10;
+  }
+  .modal-close:hover { background: var(--accent2); }
+
+  /* spinner */
+  .spinner {
+    width: 40px; height: 40px;
+    margin: 1rem auto;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Responsive ── */
+  @media (max-width: 900px) {
+    .wrapper {
+      grid-template-columns: 1fr;
+    }
+    .panel {
+      position: static;
+      height: auto;
+    }
+    .jobs-area {
+      height: auto;
+    }
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">MORPH<span> STUDIO</span></div>
+  <div class="header-badge">IMAGE → VIDEO ENGINE</div>
+</header>
+
+<div class="wrapper">
+
+  <!-- ── Left Panel ── -->
+  <aside class="panel">
+    <div>
+      <div class="panel-title">Source Frame</div>
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="file-input" accept="image/*">
+        <span class="drop-icon">🎞️</span>
+        <div class="drop-text">
+          <strong>Görsel sürükle</strong> veya tıkla<br>
+          JPG, PNG, WEBP · Maks 50MB
+        </div>
+      </div>
+      <div id="preview-wrap">
+        <img id="preview-img" src="" alt="preview">
+        <button class="preview-remove" id="remove-btn" title="Kaldır">✕</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Cinematic Prompt</label>
+      <textarea id="prompt" placeholder="Describe the motion, mood, camera movement...&#10;e.g. slow dolly in, golden hour, cinematic blur"></textarea>
+    </div>
+
+    <div class="toggle-row">
+      <div class="toggle-group">
+        <label>Duration</label>
+        <div class="pills" id="duration-pills">
+          <div class="pill active" data-val="5">5s</div>
+          <div class="pill" data-val="10">10s</div>
+        </div>
+      </div>
+      <div class="toggle-group">
+        <label>Resolution</label>
+        <div class="pills" id="resolution-pills">
+          <div class="pill active" data-val="480p">480p</div>
+          <div class="pill" data-val="720p">720p</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Model</label>
+      <div class="model-cards" id="model-cards">
+        <div class="model-card active" data-val="seedance_lite">
+          <div class="mc-name">SEEDANCE LITE</div>
+          <div class="mc-desc">Hızlı üretim, düşük gecikme</div>
+        </div>
+        <div class="model-card" data-val="seedance_v1_pro_fast">
+          <div class="mc-name">SEEDANCE PRO</div>
+          <div class="mc-desc">Yüksek kalite, sinematik çıktı</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-generate" id="generate-btn">
+      ▶ GENERATE VIDEO
+    </button>
+  </aside>
+
+  <!-- ── Right Panel ── -->
+  <main class="jobs-area">
+    <div class="jobs-header">
+      <div class="jobs-title">GENERATIONS</div>
+      <div class="jobs-count" id="jobs-count">0 job</div>
+    </div>
+
+    <div class="empty-state" id="empty-state">
+      <div class="big-icon">🎬</div>
+      <p>NO GENERATIONS YET</p>
+      <p>UPLOAD AN IMAGE AND HIT GENERATE</p>
+    </div>
+
+    <div class="jobs-grid" id="jobs-grid"></div>
+  </main>
+
+</div>
+
+<script>
+  // ── State ──
+  let selectedFile = null;
+  let selectedDuration = 5;
+  let selectedResolution = '480p';
+  let selectedModel = 'seedance_lite';
+  let activeJobs = {};
+
+  // ── Dropzone ──
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('file-input');
+  const previewWrap = document.getElementById('preview-wrap');
+  const previewImg = document.getElementById('preview-img');
+
+  dropzone.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropzone.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (f) setFile(f);
+  });
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) setFile(fileInput.files[0]);
+  });
+
+  document.getElementById('remove-btn').addEventListener('click', () => {
+    selectedFile = null;
+    previewWrap.style.display = 'none';
+    dropzone.style.display = 'block';
+    fileInput.value = '';
+  });
+
+  function setFile(f) {
+    selectedFile = f;
+    const url = URL.createObjectURL(f);
+    previewImg.src = url;
+    dropzone.style.display = 'none';
+    previewWrap.style.display = 'block';
+  }
+
+  // ── Pills ──
+  document.getElementById('duration-pills').addEventListener('click', e => {
+    if (!e.target.classList.contains('pill')) return;
+    document.querySelectorAll('#duration-pills .pill').forEach(p => p.classList.remove('active'));
+    e.target.classList.add('active');
+    selectedDuration = parseInt(e.target.dataset.val);
+  });
+
+  document.getElementById('resolution-pills').addEventListener('click', e => {
+    if (!e.target.classList.contains('pill')) return;
+    document.querySelectorAll('#resolution-pills .pill').forEach(p => p.classList.remove('active'));
+    e.target.classList.add('active');
+    selectedResolution = e.target.dataset.val;
+  });
+
+  // ── Model cards ──
+  document.getElementById('model-cards').addEventListener('click', e => {
+    const card = e.target.closest('.model-card');
+    if (!card) return;
+    document.querySelectorAll('.model-card').forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
+    selectedModel = card.dataset.val;
+  });
+
+  // ── Generate ──
+  document.getElementById('generate-btn').addEventListener('click', async () => {
+    if (!selectedFile) { alert('Lütfen bir görsel seçin.'); return; }
+    const prompt = document.getElementById('prompt').value.trim();
+    if (!prompt) { alert('Lütfen bir prompt girin.'); return; }
+
+    const btn = document.getElementById('generate-btn');
+    btn.disabled = true;
+    btn.textContent = '⏳ SUBMITTING...';
+
+    const fd = new FormData();
+    fd.append('image', selectedFile);
+    fd.append('prompt', prompt);
+    fd.append('model', selectedModel);
+    fd.append('duration', selectedDuration);
+    fd.append('resolution', selectedResolution);
+
+    try {
+      const res = await fetch('/generate', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      createJobCard(data.job_id, prompt, selectedModel, selectedDuration, selectedResolution, selectedFile);
+      pollJob(data.job_id);
+
+      // Reset form slightly
+      btn.textContent = '✅ QUEUED!';
+      setTimeout(() => { btn.disabled = false; btn.textContent = '▶ GENERATE VIDEO'; }, 2000);
+    } catch(e) {
+      alert('Hata: ' + e.message);
+      btn.disabled = false;
+      btn.textContent = '▶ GENERATE VIDEO';
+    }
+  });
+
+  // ── Create job card ──
+  function createJobCard(jobId, prompt, model, duration, resolution, file) {
+    document.getElementById('empty-state').style.display = 'none';
+    const count = Object.keys(activeJobs).length + 1;
+    document.getElementById('jobs-count').textContent = count + ' job' + (count !== 1 ? 's' : '');
+
+    const thumbUrl = URL.createObjectURL(file);
+
+    const card = document.createElement('div');
+    card.className = 'job-card';
+    card.id = 'job-' + jobId;
+    card.innerHTML = `
+      <div class="job-thumb">
+        <img src="${thumbUrl}" alt="thumb">
+        <div class="job-status-badge badge-running" id="badge-${jobId}">PROCESSING</div>
+        <div class="job-progress"><div class="job-progress-fill" id="prog-${jobId}" style="width:2%"></div></div>
+      </div>
+      <div class="job-body">
+        <div class="job-prompt">${prompt}</div>
+        <div class="job-meta">
+          <span class="meta-tag">${model === 'seedance_lite' ? 'LITE' : 'PRO'}</span>
+          <span class="meta-tag">${duration}s</span>
+          <span class="meta-tag">${resolution}</span>
+        </div>
+        <div class="job-log" id="log-${jobId}"></div>
+      </div>
+    `;
+    document.getElementById('jobs-grid').prepend(card);
+    activeJobs[jobId] = true;
+  }
+
+  // ── Poll job ──
+  async function pollJob(jobId) {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/status/' + jobId);
+        const data = await res.json();
+
+        // Update log
+        const logEl = document.getElementById('log-' + jobId);
+        if (logEl && data.log) {
+          logEl.innerHTML = data.log.map((l, i) =>
+            `<div class="log-line ${i === data.log.length - 1 ? 'latest' : ''}">${l}</div>`
+          ).join('');
+          logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        // Update progress
+        const lastLog = data.log ? data.log[data.log.length - 1] || '' : '';
+        const progMatch = lastLog.match(/(\d+)%/);
+        if (progMatch) {
+          const pEl = document.getElementById('prog-' + jobId);
+          if (pEl) pEl.style.width = Math.max(5, parseInt(progMatch[1])) + '%';
+        }
+
+        if (data.status === 'done' && data.cdn_url) {
+          clearInterval(interval);
+          finishJob(jobId, data.cdn_url);
+        } else if (data.status === 'error') {
+          clearInterval(interval);
+          errorJob(jobId, data.error);
+        }
+      } catch(e) { /* ignore */ }
+    }, 3000);
+  }
+
+  function finishJob(jobId, cdnUrl) {
+    const badge = document.getElementById('badge-' + jobId);
+    if (badge) { badge.className = 'job-status-badge badge-done'; badge.textContent = 'DONE'; }
+
+    const prog = document.getElementById('prog-' + jobId);
+    if (prog) prog.style.width = '100%';
+
+    // Replace thumb with video + expand button
+    const thumb = document.querySelector('#job-' + jobId + ' .job-thumb');
+    if (thumb) {
+      thumb.innerHTML = `
+        <video src="${cdnUrl}" autoplay loop muted playsinline></video>
+        <div class="job-status-badge badge-done">DONE</div>
+        <button class="expand-btn" onclick="openModal('${cdnUrl}')" title="Büyüt">⛶</button>
+      `;
+    }
+
+    const body = document.querySelector('#job-' + jobId + ' .job-body');
+    if (body) {
+      const btn = document.createElement('button');
+      btn.className = 'btn-watch';
+      btn.innerHTML = '⛶ WATCH FULLSCREEN';
+      btn.onclick = () => openModal(cdnUrl);
+      body.appendChild(btn);
+    }
+  }
+
+  // ── Modal ──
+  function openModal(cdnUrl) {
+    const modal = document.getElementById('video-modal');
+    const video = document.getElementById('modal-video');
+    video.src = cdnUrl;
+    video.play();
+    modal.classList.add('open');
+  }
+
+  document.getElementById('modal-close').addEventListener('click', closeModal);
+  document.getElementById('video-modal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeModal();
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+  function closeModal() {
+    const modal = document.getElementById('video-modal');
+    const video = document.getElementById('modal-video');
+    modal.classList.remove('open');
+    video.pause();
+    video.src = '';
+  }
+
+  function errorJob(jobId, msg) {
+    const badge = document.getElementById('badge-' + jobId);
+    if (badge) { badge.className = 'job-status-badge badge-error'; badge.textContent = 'FAILED'; }
+  }
+</script>
+<!-- ── Video Modal ── -->
+<div class="modal-overlay" id="video-modal">
+  <div class="modal-inner">
+    <video id="modal-video" controls autoplay loop></video>
+    <button class="modal-close" id="modal-close">✕</button>
+  </div>
+</div>
+
+</body>
+</html>
