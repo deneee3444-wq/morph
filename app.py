@@ -9,18 +9,118 @@ import tempfile
 import requests
 from urllib.parse import urlparse, parse_qs, unquote
 from bs4 import BeautifulSoup
-from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask import (Flask, request, jsonify, render_template, render_template_string,
+                   session, redirect, url_for, Response)
 from werkzeug.utils import secure_filename
+from functools import wraps
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
+app.secret_key = 'morphstudio_xK9mPqL2024_fixed'
 
+PASSWORD = '123'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
 
-# ── Job state ────────────────────────────────────────────────────────────────
-jobs = {}  # job_id -> { status, log, cdn_url, error }
+# ── Job state ─────────────────────────────────────────────────────────────────
+jobs = {}
 
-# ── Ortak Headers ────────────────────────────────────────────────────────────
+# ── Auth ──────────────────────────────────────────────────────────────────────
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get('logged_in'):
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated
+
+LOGIN_HTML = '''<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MORPH STUDIO — Login</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#050507;color:#e8e8f0;font-family:"DM Sans",sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;background-image:radial-gradient(ellipse at 50% 0%,rgba(200,255,0,.04) 0%,transparent 60%)}
+.box{width:360px;background:#0d0d12;border:1px solid #1e1e2a;border-radius:14px;padding:2.5rem 2rem;display:flex;flex-direction:column;gap:1.5rem;box-shadow:0 40px 80px rgba(0,0,0,.6)}
+.logo{font-family:"Bebas Neue",sans-serif;font-size:2.2rem;letter-spacing:.2em;color:#c8ff00;text-align:center;text-shadow:0 0 40px rgba(200,255,0,.35)}
+.logo span{color:#e8e8f0}
+.sub{font-size:.7rem;text-align:center;color:#5a5a72;letter-spacing:.15em;font-family:"DM Sans",sans-serif;margin-top:-.5rem}
+.field{display:flex;flex-direction:column;gap:.5rem}
+label{font-size:.68rem;letter-spacing:.12em;color:#5a5a72;text-transform:uppercase}
+input{width:100%;background:#111118;border:1px solid #1e1e2a;color:#e8e8f0;border-radius:6px;padding:.75rem 1rem;font-size:1rem;font-family:inherit;outline:none;transition:border-color .2s}
+input:focus{border-color:#c8ff00}
+button{width:100%;padding:.85rem;background:#c8ff00;color:#000;border:none;border-radius:6px;font-family:"Bebas Neue",sans-serif;font-size:1.1rem;letter-spacing:.15em;cursor:pointer;transition:all .2s;margin-top:.25rem}
+button:hover{box-shadow:0 8px 30px rgba(200,255,0,.25);transform:translateY(-1px)}
+.err{color:#ff4d6d;font-size:.8rem;text-align:center;background:rgba(255,77,109,.08);border:1px solid rgba(255,77,109,.2);padding:.6rem;border-radius:4px}
+</style>
+</head>
+<body>
+<div class="box">
+  <div>
+    <div class="logo">MORPH<span> STUDIO</span></div>
+    <div class="sub">IMAGE → VIDEO ENGINE</div>
+  </div>
+  {% if error %}<div class="err">{{ error }}</div>{% endif %}
+  <form method="POST" style="display:flex;flex-direction:column;gap:1rem">
+    <div class="field">
+      <label>Şifre</label>
+      <input type="password" name="password" placeholder="••••••••" autofocus autocomplete="current-password">
+    </div>
+    <button type="submit">GİRİŞ YAP</button>
+  </form>
+</div>
+</body>
+</html>'''
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if session.get('logged_in'):
+        return redirect(url_for('index'))
+    error = None
+    if request.method == 'POST':
+        if request.form.get('password') == PASSWORD:
+            session['logged_in'] = True
+            return redirect(url_for('index'))
+        error = 'Yanlış şifre'
+    return render_template_string(LOGIN_HTML, error=error)
+
+@app.route('/logout')
+def logout():
+    session.pop('logged_in', None)
+    return redirect(url_for('login'))
+
+# ── Video Proxy (for CORS-free frame extraction + forced download) ─────────────
+@app.route('/proxy_video')
+@login_required
+def proxy_video():
+    url = request.args.get('url', '')
+    download = request.args.get('dl', '0') == '1'
+    if not url:
+        return 'No URL', 400
+    req_headers = {'User-Agent': 'Mozilla/5.0'}
+    range_header = request.headers.get('Range')
+    if range_header:
+        req_headers['Range'] = range_header
+    try:
+        r = requests.get(url, headers=req_headers, stream=True, timeout=60)
+        resp_headers = {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Headers': '*',
+        }
+        for h in ['Content-Type', 'Content-Length', 'Content-Range', 'Accept-Ranges']:
+            if h in r.headers:
+                resp_headers[h] = r.headers[h]
+        if 'Accept-Ranges' not in resp_headers:
+            resp_headers['Accept-Ranges'] = 'bytes'
+        if download:
+            resp_headers['Content-Disposition'] = 'attachment; filename="morph_video.mp4"'
+        return Response(r.iter_content(chunk_size=65536), status=r.status_code, headers=resp_headers)
+    except Exception as e:
+        return str(e), 500
+
+# ── Common Headers ────────────────────────────────────────────────────────────
 def make_headers():
     return {
         "accept": "*/*",
@@ -42,7 +142,7 @@ def make_headers():
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# ── eTemp ────────────────────────────────────────────────────────────────────
+# ── eTemp ─────────────────────────────────────────────────────────────────────
 class eTemp:
     def random_email(self, length):
         return ''.join(
@@ -204,10 +304,12 @@ def run_job(job_id, image_path, prompt, model_id, duration, resolution):
 
 # ── Routes ────────────────────────────────────────────────────────────────────
 @app.route('/')
+@login_required
 def index():
     return render_template('index.html')
 
 @app.route('/generate', methods=['POST'])
+@login_required
 def generate():
     if 'image' not in request.files:
         return jsonify({'error': 'Gorsel gerekli'}), 400
@@ -237,6 +339,7 @@ def generate():
     return jsonify({'job_id': job_id})
 
 @app.route('/status/<job_id>')
+@login_required
 def status(job_id):
     job = jobs.get(job_id)
     if not job:
