@@ -23,17 +23,20 @@
     --font-mono:    'JetBrains Mono', monospace;
   }
 
-  html { scroll-behavior: smooth; }
+  html, body {
+    height: 100%;
+    overflow: hidden; /* prevent body scroll — each area scrolls itself */
+    max-width: 100%;
+  }
 
   body {
     background: var(--bg);
     color: var(--text);
     font-family: var(--font-body);
-    min-height: 100vh;
     overflow-x: hidden;
   }
 
-  /* Noise grain overlay */
+  /* Noise grain */
   body::before {
     content: '';
     position: fixed;
@@ -52,77 +55,121 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 2rem;
-    height: 60px;
-    background: rgba(5,5,7,0.85);
+    padding: 0 1.5rem;
+    height: 56px;
+    background: rgba(5,5,7,0.9);
     backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border-bottom: 1px solid var(--border);
   }
 
   .logo {
     font-family: var(--font-display);
-    font-size: 1.6rem;
+    font-size: 1.5rem;
     letter-spacing: 0.15em;
     color: var(--accent);
     text-shadow: 0 0 30px rgba(200,255,0,0.4);
+    white-space: nowrap;
   }
-
   .logo span { color: var(--text); }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
 
   .header-badge {
     font-family: var(--font-mono);
-    font-size: 0.65rem;
+    font-size: 0.62rem;
     color: var(--muted);
     border: 1px solid var(--border);
-    padding: 4px 10px;
+    padding: 3px 9px;
     border-radius: 2px;
     letter-spacing: 0.1em;
+    white-space: nowrap;
   }
+
+  .logout-btn {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    padding: 3px 9px;
+    border-radius: 2px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    background: none;
+    text-decoration: none;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .logout-btn:hover { border-color: var(--accent2); color: var(--accent2); }
 
   /* ── Layout ── */
   .wrapper {
     display: grid;
-    grid-template-columns: 420px 1fr;
-    min-height: 100vh;
-    padding-top: 60px;
+    grid-template-columns: 400px 1fr;
+    height: 100vh;
+    padding-top: 56px;
     position: relative;
     z-index: 1;
+    max-width: 100%;
+    overflow-x: hidden;
   }
 
   /* ── Left panel ── */
   .panel {
     background: var(--surface);
     border-right: 1px solid var(--border);
-    padding: 1.25rem;
-    padding-bottom: 2rem;
+    padding: 1.1rem;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.85rem;
+    height: calc(100vh - 56px);
     overflow-y: auto;
-    height: calc(100vh - 60px);
-    position: sticky;
-    top: 60px;
+    overflow-x: hidden;
   }
+
+  /* Scrollbar */
+  .panel::-webkit-scrollbar { width: 3px; }
+  .panel::-webkit-scrollbar-track { background: transparent; }
+  .panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
   .panel-title {
     font-family: var(--font-display);
-    font-size: 0.85rem;
-    letter-spacing: 0.2em;
+    font-size: 0.78rem;
+    letter-spacing: 0.22em;
     color: var(--muted);
     text-transform: uppercase;
-    margin-bottom: 0.25rem;
   }
 
-  /* ── Drop zone ── */
+  /* ── Image area: fixed-height container prevents layout shift ── */
+  .image-area {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: 8px;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: var(--card);
+  }
+
   .dropzone {
+    position: absolute;
+    inset: 0;
     border: 1.5px dashed var(--border);
     border-radius: 8px;
-    padding: 1.25rem 1rem;
-    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
     cursor: pointer;
     transition: all 0.2s;
-    position: relative;
     background: var(--card);
+    text-align: center;
+    padding: 1rem;
   }
 
   .dropzone:hover, .dropzone.drag-over {
@@ -133,29 +180,26 @@
   .dropzone input { display: none; }
 
   .drop-icon {
-    font-size: 1.4rem;
-    margin-bottom: 0.4rem;
-    display: block;
-    filter: grayscale(0.5);
+    font-size: 1.5rem;
+    filter: grayscale(0.4);
+    line-height: 1;
   }
 
   .drop-text {
-    font-size: 0.78rem;
+    font-size: 0.75rem;
     color: var(--muted);
-    line-height: 1.6;
+    line-height: 1.5;
   }
-
   .drop-text strong { color: var(--accent); }
 
+  /* Preview inside fixed image-area */
   #preview-wrap {
     display: none;
-    position: relative;
-    border-radius: 6px;
-    overflow: hidden;
-    aspect-ratio: 16/9;
+    position: absolute;
+    inset: 0;
   }
 
-  #preview-wrap img {
+  #preview-img {
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -165,25 +209,41 @@
   .preview-remove {
     position: absolute;
     top: 8px; right: 8px;
-    background: rgba(0,0,0,0.7);
+    background: rgba(0,0,0,0.75);
     border: 1px solid var(--border);
     color: var(--text);
     width: 28px; height: 28px;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 1rem;
+    font-size: 0.9rem;
     display: flex; align-items: center; justify-content: center;
     transition: background 0.15s;
+    z-index: 2;
   }
-
   .preview-remove:hover { background: var(--accent2); }
 
+  /* Frame-from-video badge on preview */
+  .frame-badge {
+    position: absolute;
+    bottom: 8px; left: 8px;
+    background: rgba(200,255,0,0.15);
+    border: 1px solid rgba(200,255,0,0.35);
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    letter-spacing: 0.08em;
+    padding: 3px 8px;
+    border-radius: 2px;
+    display: none;
+    z-index: 2;
+  }
+
   /* ── Form fields ── */
-  .field { display: flex; flex-direction: column; gap: 0.35rem; }
+  .field { display: flex; flex-direction: column; gap: 0.3rem; }
 
   label {
     font-family: var(--font-mono);
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     letter-spacing: 0.12em;
     color: var(--muted);
     text-transform: uppercase;
@@ -195,14 +255,18 @@
     color: var(--text);
     border-radius: 6px;
     font-family: var(--font-body);
-    font-size: 0.9rem;
-    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    padding: 0.65rem 0.875rem;
     transition: border-color 0.2s;
     outline: none;
     width: 100%;
   }
 
-  textarea { resize: vertical; min-height: 68px; line-height: 1.6; }
+  textarea {
+    resize: none;
+    height: 72px;
+    line-height: 1.55;
+  }
 
   textarea:focus, select:focus { border-color: var(--accent); }
 
@@ -213,19 +277,19 @@
     gap: 0.6rem;
   }
 
-  .toggle-group { display: flex; flex-direction: column; gap: 0.5rem; }
+  .toggle-group { display: flex; flex-direction: column; gap: 0.4rem; }
 
   .pills {
     display: flex;
-    gap: 0.4rem;
+    gap: 0.35rem;
     flex-wrap: wrap;
   }
 
   .pill {
     font-family: var(--font-mono);
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     letter-spacing: 0.06em;
-    padding: 3px 10px;
+    padding: 3px 9px;
     border-radius: 3px;
     border: 1px solid var(--border);
     background: var(--card);
@@ -254,7 +318,7 @@
   .model-card {
     border: 1px solid var(--border);
     border-radius: 6px;
-    padding: 0.5rem 0.65rem;
+    padding: 0.45rem 0.6rem;
     cursor: pointer;
     transition: all 0.15s;
     background: var(--card);
@@ -269,33 +333,32 @@
 
   .model-card .mc-name {
     font-family: var(--font-mono);
-    font-size: 0.65rem;
+    font-size: 0.62rem;
     color: var(--accent);
     letter-spacing: 0.08em;
-    margin-bottom: 3px;
+    margin-bottom: 2px;
   }
 
   .model-card .mc-desc {
-    font-size: 0.66rem;
+    font-size: 0.63rem;
     color: var(--muted);
-    line-height: 1.4;
+    line-height: 1.3;
   }
 
-  /* ── Submit ── */
+  /* ── Submit — pushed to bottom ── */
   .btn-generate {
     width: 100%;
-    padding: 0.75rem;
+    padding: 0.7rem;
     background: var(--accent);
     color: #000;
     border: none;
     border-radius: 6px;
     font-family: var(--font-display);
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     letter-spacing: 0.15em;
     cursor: pointer;
     transition: all 0.2s;
-    position: relative;
-    overflow: hidden;
+    margin-top: auto;
     flex-shrink: 0;
   }
 
@@ -314,32 +377,81 @@
     box-shadow: none;
   }
 
-  /* ── Right panel: jobs ── */
+  /* ── Right panel ── */
   .jobs-area {
-    padding: 2rem;
-    overflow-y: auto;
-    height: calc(100vh - 60px);
-  }
-
-  .jobs-header {
     display: flex;
-    align-items: baseline;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
+    flex-direction: column;
+    height: calc(100vh - 56px);
+    overflow: hidden;
   }
 
-  .jobs-title {
-    font-family: var(--font-display);
-    font-size: 1.8rem;
-    letter-spacing: 0.08em;
-    color: var(--text);
+  /* ── Tab bar ── */
+  .tab-bar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 0 1.5rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
   }
 
-  .jobs-count {
+  .tab-btn {
     font-family: var(--font-mono);
-    font-size: 0.7rem;
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
     color: var(--muted);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 0.9rem 0.75rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
+
+  .tab-btn:hover { color: var(--text); }
+
+  .tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .tab-count {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1px 6px;
+    font-size: 0.58rem;
+    min-width: 18px;
+    text-align: center;
+  }
+
+  .tab-btn.active .tab-count {
+    background: rgba(200,255,0,0.15);
+    border-color: rgba(200,255,0,0.3);
+    color: var(--accent);
+  }
+
+  /* ── Tab content ── */
+  .tab-content {
+    display: none;
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.5rem;
+  }
+
+  .tab-content.active { display: block; }
+
+  .tab-content::-webkit-scrollbar { width: 4px; }
+  .tab-content::-webkit-scrollbar-track { background: transparent; }
+  .tab-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
   /* ── Empty state ── */
   .empty-state {
@@ -347,26 +459,27 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 60%;
+    min-height: 40vh;
     gap: 1rem;
     opacity: 0.35;
     user-select: none;
   }
 
-  .empty-state .big-icon { font-size: 4rem; }
+  .empty-state .big-icon { font-size: 3.5rem; }
 
   .empty-state p {
     font-family: var(--font-mono);
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     letter-spacing: 0.12em;
     color: var(--muted);
+    text-align: center;
   }
 
   /* ── Job cards ── */
   .jobs-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 0.9rem;
   }
 
   .job-card {
@@ -374,50 +487,45 @@
     border: 1px solid var(--border);
     border-radius: 8px;
     overflow: hidden;
-    animation: fadeUp 0.4s ease both;
+    animation: fadeUp 0.35s ease both;
     transition: border-color 0.2s;
   }
 
   .job-card:hover { border-color: var(--muted); }
 
   @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(16px); }
+    from { opacity: 0; transform: translateY(14px); }
     to   { opacity: 1; transform: translateY(0); }
   }
 
   /* thumb */
   .job-thumb {
-    aspect-ratio: 16/9;
+    aspect-ratio: 16 / 9;
     background: var(--surface);
     position: relative;
     overflow: hidden;
   }
 
-  .job-thumb img {
+  .job-thumb img, .job-thumb video {
     width: 100%;
     height: 100%;
     object-fit: cover;
     display: block;
-    opacity: 0.6;
   }
 
-  .job-thumb video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-  }
+  .job-thumb img { opacity: 0.55; }
 
   .job-status-badge {
     position: absolute;
-    top: 10px; left: 10px;
+    top: 8px; left: 8px;
     font-family: var(--font-mono);
-    font-size: 0.6rem;
+    font-size: 0.58rem;
     letter-spacing: 0.1em;
-    padding: 4px 10px;
+    padding: 3px 9px;
     border-radius: 2px;
     text-transform: uppercase;
     font-weight: 600;
+    pointer-events: none;
   }
 
   .badge-running  { background: rgba(200,255,0,0.15); color: var(--accent); border: 1px solid rgba(200,255,0,0.3); }
@@ -439,31 +547,72 @@
     box-shadow: 0 0 8px rgba(200,255,0,0.6);
   }
 
+  /* expand icon */
+  .expand-btn {
+    position: absolute;
+    bottom: 8px; right: 8px;
+    background: rgba(0,0,0,0.65);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #fff;
+    width: 28px; height: 28px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+  .expand-btn:hover { background: var(--accent); color: #000; border-color: var(--accent); }
+
   /* card body */
-  .job-body { padding: 1rem; }
+  .job-body { padding: 0.85rem; }
+
+  /* prompt row with copy icon */
+  .prompt-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    margin-bottom: 0.45rem;
+  }
 
   .job-prompt {
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     color: var(--text);
-    margin-bottom: 0.5rem;
+    flex: 1;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    line-height: 1.4;
+    cursor: default;
   }
+
+  .copy-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.8rem;
+    padding: 0 2px;
+    flex-shrink: 0;
+    transition: color 0.15s, transform 0.15s;
+    line-height: 1.4;
+  }
+  .copy-btn:hover { color: var(--accent); transform: scale(1.15); }
 
   .job-meta {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.4rem;
     flex-wrap: wrap;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.65rem;
   }
 
   .meta-tag {
     font-family: var(--font-mono);
-    font-size: 0.6rem;
+    font-size: 0.58rem;
     color: var(--muted);
     background: var(--surface);
-    padding: 3px 8px;
+    padding: 2px 7px;
     border-radius: 2px;
     border: 1px solid var(--border);
   }
@@ -472,8 +621,8 @@
   .job-log {
     background: var(--surface);
     border-radius: 4px;
-    padding: 0.6rem 0.75rem;
-    max-height: 100px;
+    padding: 0.5rem 0.65rem;
+    max-height: 90px;
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
@@ -481,90 +630,144 @@
 
   .log-line {
     font-family: var(--font-mono);
-    font-size: 0.65rem;
+    font-size: 0.62rem;
     color: var(--muted);
     line-height: 1.8;
-    animation: logIn 0.2s ease;
-  }
-
-  @keyframes logIn {
-    from { opacity: 0; transform: translateX(-4px); }
-    to   { opacity: 1; transform: translateX(0); }
   }
 
   .log-line.latest { color: var(--accent); }
 
-  /* video link */
-  .btn-watch {
+  /* download button */
+  .btn-download {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
+    gap: 0.45rem;
     width: 100%;
-    padding: 0.6rem;
-    margin-top: 0.75rem;
+    padding: 0.55rem;
+    margin-top: 0.6rem;
     background: transparent;
     border: 1px solid var(--accent);
     color: var(--accent);
     border-radius: 4px;
     font-family: var(--font-mono);
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     letter-spacing: 0.08em;
     text-decoration: none;
     cursor: pointer;
     transition: all 0.15s;
   }
 
-  .btn-watch:hover {
+  .btn-download:hover {
     background: var(--accent);
     color: #000;
   }
 
-  /* expand icon on thumb */
-  .expand-btn {
+  /* ── Delete button on job cards ── */
+  .job-delete-btn {
     position: absolute;
-    bottom: 10px; right: 10px;
-    background: rgba(0,0,0,0.6);
-    border: 1px solid rgba(255,255,255,0.15);
-    color: #fff;
-    width: 30px; height: 30px;
+    top: 8px; right: 8px;
+    background: rgba(0,0,0,0.72);
+    border: 1px solid rgba(255,77,109,0.35);
+    color: rgba(255,77,109,0.75);
+    width: 26px; height: 26px;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     display: flex; align-items: center; justify-content: center;
     transition: all 0.15s;
     backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 3;
+    line-height: 1;
   }
-  .expand-btn:hover { background: var(--accent); color: #000; border-color: var(--accent); }
+  .job-delete-btn:hover { background: var(--accent2); color: #fff; border-color: var(--accent2); }
 
-  /* modal */
+  /* ── Tab action bar (clear all) ── */
+  .tab-bar-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-right: 0.25rem;
+  }
+
+  .btn-clear-all {
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 3px 9px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn-clear-all:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  /* ── gallery date stamp ── */
+  .gallery-date {
+    position: absolute;
+    bottom: 8px; left: 8px;
+    font-family: var(--font-mono);
+    font-size: 0.55rem;
+    color: rgba(255,255,255,0.45);
+    letter-spacing: 0.05em;
+    pointer-events: none;
+  }
+
+  /* ── Modal overlay — close btn lives here (not inside modal-inner) ── */
   .modal-overlay {
     display: none;
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.92);
+    background: rgba(0,0,0,0.93);
     z-index: 999;
     align-items: center;
     justify-content: center;
-    backdrop-filter: blur(8px);
-    animation: fadeIn 0.2s ease;
+    flex-direction: column;
+    gap: 0.9rem;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
   }
+
   .modal-overlay.open { display: flex; }
 
-  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .modal-close {
+    position: fixed;
+    top: 18px; right: 18px;
+    background: rgba(20,20,28,0.9);
+    border: 1px solid rgba(255,255,255,0.18);
+    color: #fff;
+    width: 36px; height: 36px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+    z-index: 1001;
+    line-height: 1;
+  }
+  .modal-close:hover { background: var(--accent2); border-color: var(--accent2); }
 
   .modal-inner {
-    position: relative;
-    width: 90vw;
-    max-width: 1100px;
-    aspect-ratio: 16/9;
+    width: 88vw;
+    max-width: 1080px;
+    aspect-ratio: 16 / 9;
     background: #000;
     border-radius: 10px;
     overflow: hidden;
     box-shadow: 0 0 80px rgba(0,0,0,0.8);
-    animation: scaleIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
+    animation: scaleIn 0.22s cubic-bezier(0.34,1.56,0.64,1);
+    flex-shrink: 0;
   }
-  @keyframes scaleIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+  @keyframes scaleIn {
+    from { transform: scale(0.88); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+  }
 
   .modal-inner video {
     width: 100%; height: 100%;
@@ -572,369 +775,897 @@
     display: block;
   }
 
-  .modal-close {
-    position: absolute;
-    top: 14px; right: 14px;
-    background: rgba(0,0,0,0.7);
-    border: 1px solid rgba(255,255,255,0.15);
-    color: #fff;
-    width: 36px; height: 36px;
-    border-radius: 6px;
+  /* Frame extraction bar below video */
+  .frame-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 88vw;
+    max-width: 1080px;
+    padding: 0.65rem 0.9rem;
+    background: rgba(13,13,18,0.85);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    flex-shrink: 0;
+  }
+
+  .frame-time {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--muted);
+    white-space: nowrap;
+    min-width: 90px;
+  }
+
+  .capture-btn {
+    background: rgba(200,255,0,0.1);
+    border: 1px solid rgba(200,255,0,0.35);
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    padding: 5px 14px;
+    border-radius: 4px;
     cursor: pointer;
-    font-size: 1.1rem;
-    display: flex; align-items: center; justify-content: center;
-    transition: background 0.15s;
-    z-index: 10;
+    white-space: nowrap;
+    transition: all 0.15s;
+    flex-shrink: 0;
   }
-  .modal-close:hover { background: var(--accent2); }
+  .capture-btn:hover { background: var(--accent); color: #000; border-color: var(--accent); }
+  .capture-btn:disabled { opacity: 0.5; cursor: wait; }
 
-  /* spinner */
-  .spinner {
-    width: 40px; height: 40px;
-    margin: 1rem auto;
-    border: 2px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
+  /* ── Toast ── */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    padding: 0.6rem 1.25rem;
+    border-radius: 6px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    z-index: 2000;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+    white-space: nowrap;
   }
-
-  @keyframes spin { to { transform: rotate(360deg); } }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
   /* ── Responsive ── */
-  @media (max-width: 900px) {
-    .wrapper {
-      grid-template-columns: 1fr;
-    }
-    .panel {
-      position: static;
-      height: auto;
-    }
-    .jobs-area {
-      height: auto;
-    }
+  @media (max-width: 860px) {
+    html { overflow-x: hidden; }
+    html, body { overflow-y: auto; overflow-x: hidden; height: auto; }
+    .wrapper { grid-template-columns: 1fr; height: auto; }
+    .panel { height: auto; overflow-y: visible; overflow-x: hidden; }
+    .jobs-area { height: auto; overflow: visible; }
+    .tab-content { overflow-y: visible; }
   }
 
-  /* Scrollbar */
-  ::-webkit-scrollbar { width: 4px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  @media (max-width: 540px) {
+    header { padding: 0 0.75rem; gap: 0.5rem; }
+    .header-badge { display: none; }
+    .logo { font-size: 1.2rem; }
+  }
 </style>
 </head>
 <body>
 
+<!-- Hidden canvas for frame extraction -->
+<canvas id="frame-canvas" style="display:none"></canvas>
+
 <header>
   <div class="logo">MORPH<span> STUDIO</span></div>
-  <div class="header-badge">IMAGE → VIDEO ENGINE</div>
+  <div class="header-right">
+    <div class="header-badge">IMAGE → VIDEO ENGINE</div>
+    <a href="/logout" class="logout-btn">LOGOUT</a>
+  </div>
 </header>
 
 <div class="wrapper">
 
   <!-- ── Left Panel ── -->
   <aside class="panel">
-    <div>
-      <div class="panel-title">Source Frame</div>
+
+    <div class="panel-title">Source Frame</div>
+
+    <!-- Fixed-height image area: no layout shift when image added -->
+    <div class="image-area">
       <div class="dropzone" id="dropzone">
-        <input type="file" id="file-input" accept="image/*">
+        <input type="file" id="file-input" accept="image/png,image/jpeg,image/webp" aria-label="Görsel seç">
         <span class="drop-icon">🎞️</span>
         <div class="drop-text">
           <strong>Görsel sürükle</strong> veya tıkla<br>
-          JPG, PNG, WEBP · Maks 50MB
+          JPG · PNG · WEBP · Maks 50MB
         </div>
       </div>
       <div id="preview-wrap">
-        <img id="preview-img" src="" alt="preview">
-        <button class="preview-remove" id="remove-btn" title="Kaldır">✕</button>
+        <img id="preview-img" src="" alt="Seçili görsel önizlemesi">
+        <button class="preview-remove" id="remove-btn" title="Kaldır" aria-label="Görseli kaldır">✕</button>
+        <div class="frame-badge" id="frame-badge">📷 FRAME</div>
       </div>
     </div>
 
     <div class="field">
-      <label>Cinematic Prompt</label>
+      <label for="prompt">Cinematic Prompt</label>
       <textarea id="prompt" placeholder="Describe the motion, mood, camera movement...&#10;e.g. slow dolly in, golden hour, cinematic blur"></textarea>
     </div>
 
     <div class="toggle-row">
       <div class="toggle-group">
         <label>Duration</label>
-        <div class="pills" id="duration-pills">
-          <div class="pill active" data-val="5">5s</div>
-          <div class="pill" data-val="10">10s</div>
+        <div class="pills" id="duration-pills" role="group" aria-label="Süre seç">
+          <div class="pill active" data-val="5" role="button" tabindex="0">5s</div>
+          <div class="pill" data-val="10" role="button" tabindex="0">10s</div>
         </div>
       </div>
       <div class="toggle-group">
         <label>Resolution</label>
-        <div class="pills" id="resolution-pills">
-          <div class="pill active" data-val="480p">480p</div>
-          <div class="pill" data-val="720p">720p</div>
+        <div class="pills" id="resolution-pills" role="group" aria-label="Çözünürlük seç">
+          <div class="pill active" data-val="480p" role="button" tabindex="0">480p</div>
+          <div class="pill" data-val="720p" role="button" tabindex="0">720p</div>
         </div>
       </div>
     </div>
 
     <div class="field">
       <label>Model</label>
-      <div class="model-cards" id="model-cards">
-        <div class="model-card active" data-val="seedance_lite">
+      <div class="model-cards" id="model-cards" role="group" aria-label="Model seç">
+        <div class="model-card active" data-val="seedance_lite" role="button" tabindex="0">
           <div class="mc-name">SEEDANCE LITE</div>
           <div class="mc-desc">Hızlı üretim, düşük gecikme</div>
         </div>
-        <div class="model-card" data-val="seedance_v1_pro_fast">
+        <div class="model-card" data-val="seedance_v1_pro_fast" role="button" tabindex="0">
           <div class="mc-name">SEEDANCE PRO</div>
           <div class="mc-desc">Yüksek kalite, sinematik çıktı</div>
         </div>
       </div>
     </div>
 
-    <button class="btn-generate" id="generate-btn">
-      ▶ GENERATE VIDEO
-    </button>
+    <button class="btn-generate" id="generate-btn">▶ GENERATE VIDEO</button>
   </aside>
 
   <!-- ── Right Panel ── -->
-  <main class="jobs-area">
-    <div class="jobs-header">
-      <div class="jobs-title">GENERATIONS</div>
-      <div class="jobs-count" id="jobs-count">0 job</div>
+  <main class="jobs-area" role="main">
+
+    <!-- Tab Bar -->
+    <div class="tab-bar" role="tablist">
+      <button class="tab-btn active" data-tab="generations" role="tab" aria-selected="true">
+        GENERATIONS
+        <span class="tab-count" id="gen-count">0</span>
+      </button>
+      <button class="tab-btn" data-tab="gallery" role="tab" aria-selected="false">
+        GALLERY
+        <span class="tab-count" id="gallery-count">0</span>
+      </button>
+      <div class="tab-bar-actions">
+        <button class="btn-clear-all" id="clear-gen-btn" title="Tüm generation kartlarını temizle" style="display:none">✕ TÜMÜNÜ SİL</button>
+        <button class="btn-clear-all" id="clear-gallery-btn" title="Galeriyi temizle" style="display:none">✕ GALERİYİ SİL</button>
+      </div>
     </div>
 
-    <div class="empty-state" id="empty-state">
-      <div class="big-icon">🎬</div>
-      <p>NO GENERATIONS YET</p>
-      <p>UPLOAD AN IMAGE AND HIT GENERATE</p>
+    <!-- Generations tab -->
+    <div class="tab-content active" id="tab-generations" role="tabpanel">
+      <div class="empty-state" id="empty-state">
+        <div class="big-icon">🎬</div>
+        <p>NO GENERATIONS YET</p>
+        <p>UPLOAD AN IMAGE AND HIT GENERATE</p>
+      </div>
+      <div class="jobs-grid" id="jobs-grid"></div>
     </div>
 
-    <div class="jobs-grid" id="jobs-grid"></div>
+    <!-- Gallery tab -->
+    <div class="tab-content" id="tab-gallery" role="tabpanel">
+      <div class="empty-state" id="gallery-empty">
+        <div class="big-icon">🗂️</div>
+        <p>GALLERY IS EMPTY</p>
+        <p>COMPLETED VIDEOS APPEAR HERE AUTOMATICALLY</p>
+      </div>
+      <div class="jobs-grid" id="gallery-grid"></div>
+    </div>
+
   </main>
-
 </div>
 
-<script>
-  // ── State ──
-  let selectedFile = null;
-  let selectedDuration = 5;
-  let selectedResolution = '480p';
-  let selectedModel = 'seedance_lite';
-  let activeJobs = {};
-
-  // ── Dropzone ──
-  const dropzone = document.getElementById('dropzone');
-  const fileInput = document.getElementById('file-input');
-  const previewWrap = document.getElementById('preview-wrap');
-  const previewImg = document.getElementById('preview-img');
-
-  dropzone.addEventListener('click', () => fileInput.click());
-  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
-  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
-  dropzone.addEventListener('drop', e => {
-    e.preventDefault();
-    dropzone.classList.remove('drag-over');
-    const f = e.dataTransfer.files[0];
-    if (f) setFile(f);
-  });
-  fileInput.addEventListener('change', () => {
-    if (fileInput.files[0]) setFile(fileInput.files[0]);
-  });
-
-  document.getElementById('remove-btn').addEventListener('click', () => {
-    selectedFile = null;
-    previewWrap.style.display = 'none';
-    dropzone.style.display = 'block';
-    fileInput.value = '';
-  });
-
-  function setFile(f) {
-    selectedFile = f;
-    const url = URL.createObjectURL(f);
-    previewImg.src = url;
-    dropzone.style.display = 'none';
-    previewWrap.style.display = 'block';
-  }
-
-  // ── Pills ──
-  document.getElementById('duration-pills').addEventListener('click', e => {
-    if (!e.target.classList.contains('pill')) return;
-    document.querySelectorAll('#duration-pills .pill').forEach(p => p.classList.remove('active'));
-    e.target.classList.add('active');
-    selectedDuration = parseInt(e.target.dataset.val);
-  });
-
-  document.getElementById('resolution-pills').addEventListener('click', e => {
-    if (!e.target.classList.contains('pill')) return;
-    document.querySelectorAll('#resolution-pills .pill').forEach(p => p.classList.remove('active'));
-    e.target.classList.add('active');
-    selectedResolution = e.target.dataset.val;
-  });
-
-  // ── Model cards ──
-  document.getElementById('model-cards').addEventListener('click', e => {
-    const card = e.target.closest('.model-card');
-    if (!card) return;
-    document.querySelectorAll('.model-card').forEach(c => c.classList.remove('active'));
-    card.classList.add('active');
-    selectedModel = card.dataset.val;
-  });
-
-  // ── Generate ──
-  document.getElementById('generate-btn').addEventListener('click', async () => {
-    if (!selectedFile) { alert('Lütfen bir görsel seçin.'); return; }
-    const prompt = document.getElementById('prompt').value.trim();
-    if (!prompt) { alert('Lütfen bir prompt girin.'); return; }
-
-    const btn = document.getElementById('generate-btn');
-    btn.disabled = true;
-    btn.textContent = '⏳ SUBMITTING...';
-
-    const fd = new FormData();
-    fd.append('image', selectedFile);
-    fd.append('prompt', prompt);
-    fd.append('model', selectedModel);
-    fd.append('duration', selectedDuration);
-    fd.append('resolution', selectedResolution);
-
-    try {
-      const res = await fetch('/generate', { method: 'POST', body: fd });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-
-      createJobCard(data.job_id, prompt, selectedModel, selectedDuration, selectedResolution, selectedFile);
-      pollJob(data.job_id);
-
-      // Reset form slightly
-      btn.textContent = '✅ QUEUED!';
-      setTimeout(() => { btn.disabled = false; btn.textContent = '▶ GENERATE VIDEO'; }, 2000);
-    } catch(e) {
-      alert('Hata: ' + e.message);
-      btn.disabled = false;
-      btn.textContent = '▶ GENERATE VIDEO';
-    }
-  });
-
-  // ── Create job card ──
-  function createJobCard(jobId, prompt, model, duration, resolution, file) {
-    document.getElementById('empty-state').style.display = 'none';
-    const count = Object.keys(activeJobs).length + 1;
-    document.getElementById('jobs-count').textContent = count + ' job' + (count !== 1 ? 's' : '');
-
-    const thumbUrl = URL.createObjectURL(file);
-
-    const card = document.createElement('div');
-    card.className = 'job-card';
-    card.id = 'job-' + jobId;
-    card.innerHTML = `
-      <div class="job-thumb">
-        <img src="${thumbUrl}" alt="thumb">
-        <div class="job-status-badge badge-running" id="badge-${jobId}">PROCESSING</div>
-        <div class="job-progress"><div class="job-progress-fill" id="prog-${jobId}" style="width:2%"></div></div>
-      </div>
-      <div class="job-body">
-        <div class="job-prompt">${prompt}</div>
-        <div class="job-meta">
-          <span class="meta-tag">${model === 'seedance_lite' ? 'LITE' : 'PRO'}</span>
-          <span class="meta-tag">${duration}s</span>
-          <span class="meta-tag">${resolution}</span>
-        </div>
-        <div class="job-log" id="log-${jobId}"></div>
-      </div>
-    `;
-    document.getElementById('jobs-grid').prepend(card);
-    activeJobs[jobId] = true;
-  }
-
-  // ── Poll job ──
-  async function pollJob(jobId) {
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch('/status/' + jobId);
-        const data = await res.json();
-
-        // Update log
-        const logEl = document.getElementById('log-' + jobId);
-        if (logEl && data.log) {
-          logEl.innerHTML = data.log.map((l, i) =>
-            `<div class="log-line ${i === data.log.length - 1 ? 'latest' : ''}">${l}</div>`
-          ).join('');
-          logEl.scrollTop = logEl.scrollHeight;
-        }
-
-        // Update progress
-        const lastLog = data.log ? data.log[data.log.length - 1] || '' : '';
-        const progMatch = lastLog.match(/(\d+)%/);
-        if (progMatch) {
-          const pEl = document.getElementById('prog-' + jobId);
-          if (pEl) pEl.style.width = Math.max(5, parseInt(progMatch[1])) + '%';
-        }
-
-        if (data.status === 'done' && data.cdn_url) {
-          clearInterval(interval);
-          finishJob(jobId, data.cdn_url);
-        } else if (data.status === 'error') {
-          clearInterval(interval);
-          errorJob(jobId, data.error);
-        }
-      } catch(e) { /* ignore */ }
-    }, 3000);
-  }
-
-  function finishJob(jobId, cdnUrl) {
-    const badge = document.getElementById('badge-' + jobId);
-    if (badge) { badge.className = 'job-status-badge badge-done'; badge.textContent = 'DONE'; }
-
-    const prog = document.getElementById('prog-' + jobId);
-    if (prog) prog.style.width = '100%';
-
-    // Replace thumb with video + expand button
-    const thumb = document.querySelector('#job-' + jobId + ' .job-thumb');
-    if (thumb) {
-      thumb.innerHTML = `
-        <video src="${cdnUrl}" autoplay loop muted playsinline></video>
-        <div class="job-status-badge badge-done">DONE</div>
-        <button class="expand-btn" onclick="openModal('${cdnUrl}')" title="Büyüt">⛶</button>
-      `;
-    }
-
-    const body = document.querySelector('#job-' + jobId + ' .job-body');
-    if (body) {
-      const btn = document.createElement('button');
-      btn.className = 'btn-watch';
-      btn.innerHTML = '⛶ WATCH FULLSCREEN';
-      btn.onclick = () => openModal(cdnUrl);
-      body.appendChild(btn);
-    }
-  }
-
-  // ── Modal ──
-  function openModal(cdnUrl) {
-    const modal = document.getElementById('video-modal');
-    const video = document.getElementById('modal-video');
-    video.src = cdnUrl;
-    video.play();
-    modal.classList.add('open');
-  }
-
-  document.getElementById('modal-close').addEventListener('click', closeModal);
-  document.getElementById('video-modal').addEventListener('click', e => {
-    if (e.target === e.currentTarget) closeModal();
-  });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
-
-  function closeModal() {
-    const modal = document.getElementById('video-modal');
-    const video = document.getElementById('modal-video');
-    modal.classList.remove('open');
-    video.pause();
-    video.src = '';
-  }
-
-  function errorJob(jobId, msg) {
-    const badge = document.getElementById('badge-' + jobId);
-    if (badge) { badge.className = 'job-status-badge badge-error'; badge.textContent = 'FAILED'; }
-  }
-</script>
-<!-- ── Video Modal ── -->
-<div class="modal-overlay" id="video-modal">
+<!-- ── Video Modal — close button is OUTSIDE modal-inner ── -->
+<div class="modal-overlay" id="video-modal" role="dialog" aria-modal="true" aria-label="Video önizleme">
+  <button class="modal-close" id="modal-close" title="Kapat" aria-label="Modalı kapat">✕</button>
   <div class="modal-inner">
-    <video id="modal-video" controls autoplay loop></video>
-    <button class="modal-close" id="modal-close">✕</button>
+    <video id="modal-video" controls autoplay loop playsinline></video>
+  </div>
+  <!-- Frame extraction bar -->
+  <div class="frame-bar">
+    <span class="frame-time" id="frame-time">0:00 / 0:00</span>
+    <button class="capture-btn" id="capture-btn" title="Bu kareyi input olarak kullan">
+      📷 USE THIS FRAME AS INPUT
+    </button>
   </div>
 </div>
+
+<!-- Toast -->
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+'use strict';
+
+// ── State ──
+let selectedFile = null;
+let selectedDuration = 5;
+let selectedResolution = '480p';
+let selectedModel = 'seedance_lite';
+let activeJobs = {};   // { jobId: { prompt, model, duration, resolution } }
+let currentCdnUrl = '';
+
+// ── Active jobs persistence (localStorage) ──
+const ACTIVE_JOBS_KEY = 'morph_active_jobs_v1';
+
+function persistActiveJobs() {
+  try { localStorage.setItem(ACTIVE_JOBS_KEY, JSON.stringify(activeJobs)); } catch(e) {}
+}
+
+function removePersistedJob(jobId) {
+  delete activeJobs[jobId];
+  persistActiveJobs();
+  updateGenCount();
+}
+
+// ── Toast ──
+function showToast(msg, dur = 2800) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+// ── Clipboard ──
+function copyText(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => showToast('✅ Prompt kopyalandı!'));
+  } else {
+    // Fallback for older browsers
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    try { document.execCommand('copy'); showToast('✅ Prompt kopyalandı!'); }
+    catch(e) { showToast('❌ Kopyalama başarısız'); }
+    document.body.removeChild(ta);
+  }
+}
+
+// ── Escape HTML ──
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// ── Format time ──
+function formatTime(s) {
+  s = Math.round(s || 0);
+  const m = Math.floor(s / 60);
+  return m + ':' + String(s % 60).padStart(2, '0');
+}
+
+function formatDate(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  return d.toLocaleDateString('tr-TR', { day:'2-digit', month:'2-digit', year:'2-digit' })
+       + ' ' + d.toLocaleTimeString('tr-TR', { hour:'2-digit', minute:'2-digit' });
+}
+
+// ── Tabs ──
+function updateClearBtnVisibility(tab) {
+  const genBtn = document.getElementById('clear-gen-btn');
+  const galBtn = document.getElementById('clear-gallery-btn');
+  genBtn.style.display = tab === 'generations' ? '' : 'none';
+  galBtn.style.display = tab === 'gallery' ? '' : 'none';
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      b.classList.remove('active');
+      b.setAttribute('aria-selected', 'false');
+    });
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+    btn.classList.add('active');
+    btn.setAttribute('aria-selected', 'true');
+    const target = btn.dataset.tab;
+    document.getElementById('tab-' + target).classList.add('active');
+    updateClearBtnVisibility(target);
+  });
+});
+
+// Clear all generations
+document.getElementById('clear-gen-btn').addEventListener('click', () => {
+  if (!confirm('Tüm generation kartları silinsin mi? (Aktif görevler de durdurulur)')) return;
+  document.getElementById('jobs-grid').innerHTML = '';
+  activeJobs = {};
+  persistActiveJobs();
+  updateGenCount();
+  document.getElementById('empty-state').style.display = '';
+});
+
+// Clear all gallery
+document.getElementById('clear-gallery-btn').addEventListener('click', () => {
+  if (!confirm('Tüm galeri silinsin mi?')) return;
+  try { localStorage.removeItem(GALLERY_KEY); } catch(e) {}
+  document.getElementById('gallery-grid').innerHTML = '';
+  updateGalleryCount();
+});
+
+// ── Dropzone ──
+const dropzone   = document.getElementById('dropzone');
+const fileInput  = document.getElementById('file-input');
+const previewWrap= document.getElementById('preview-wrap');
+const previewImg = document.getElementById('preview-img');
+const frameBadge = document.getElementById('frame-badge');
+
+dropzone.addEventListener('click', () => fileInput.click());
+
+dropzone.addEventListener('dragover', e => {
+  e.preventDefault();
+  dropzone.classList.add('drag-over');
+});
+
+dropzone.addEventListener('dragleave', e => {
+  if (!dropzone.contains(e.relatedTarget)) dropzone.classList.remove('drag-over');
+});
+
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f) setFile(f);
+});
+
+fileInput.addEventListener('change', () => {
+  if (fileInput.files[0]) setFile(fileInput.files[0]);
+});
+
+document.getElementById('remove-btn').addEventListener('click', () => {
+  clearFile();
+});
+
+// Keyboard support for dropzone
+dropzone.addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }
+});
+
+function setFile(f, isFrame = false) {
+  selectedFile = f;
+  const url = URL.createObjectURL(f);
+  previewImg.src = url;
+  dropzone.style.display = 'none';
+  previewWrap.style.display = 'block';
+  frameBadge.style.display = isFrame ? 'block' : 'none';
+}
+
+function clearFile() {
+  selectedFile = null;
+  if (previewImg.src) URL.revokeObjectURL(previewImg.src);
+  previewImg.src = '';
+  previewWrap.style.display = 'none';
+  dropzone.style.display = '';
+  fileInput.value = '';
+  frameBadge.style.display = 'none';
+}
+
+// ── Duration pills ──
+document.getElementById('duration-pills').addEventListener('click', e => {
+  const pill = e.target.closest('.pill');
+  if (!pill) return;
+  document.querySelectorAll('#duration-pills .pill').forEach(p => p.classList.remove('active'));
+  pill.classList.add('active');
+  selectedDuration = parseInt(pill.dataset.val);
+});
+
+// Keyboard support for pills
+document.querySelectorAll('.pill').forEach(p => {
+  p.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); p.click(); }
+  });
+});
+
+// ── Resolution pills ──
+document.getElementById('resolution-pills').addEventListener('click', e => {
+  const pill = e.target.closest('.pill');
+  if (!pill) return;
+  document.querySelectorAll('#resolution-pills .pill').forEach(p => p.classList.remove('active'));
+  pill.classList.add('active');
+  selectedResolution = pill.dataset.val;
+});
+
+// ── Model cards ──
+document.getElementById('model-cards').addEventListener('click', e => {
+  const card = e.target.closest('.model-card');
+  if (!card) return;
+  document.querySelectorAll('.model-card').forEach(c => c.classList.remove('active'));
+  card.classList.add('active');
+  selectedModel = card.dataset.val;
+});
+
+document.querySelectorAll('.model-card').forEach(c => {
+  c.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); c.click(); }
+  });
+});
+
+// ── Generate ──
+document.getElementById('generate-btn').addEventListener('click', async () => {
+  if (!selectedFile) { showToast('⚠️ Lütfen bir görsel seçin.'); return; }
+  const prompt = document.getElementById('prompt').value.trim();
+  if (!prompt) { showToast('⚠️ Lütfen bir prompt girin.'); return; }
+
+  const btn = document.getElementById('generate-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ SUBMITTING...';
+
+  const fd = new FormData();
+  fd.append('image', selectedFile);
+  fd.append('prompt', prompt);
+  fd.append('model', selectedModel);
+  fd.append('duration', selectedDuration);
+  fd.append('resolution', selectedResolution);
+
+  try {
+    const res = await fetch('/generate', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    createJobCard(data.job_id, prompt, selectedModel, selectedDuration, selectedResolution, selectedFile);
+    pollJob(data.job_id, prompt, selectedModel, selectedDuration, selectedResolution);
+
+    // Switch to Generations tab
+    document.querySelector('[data-tab="generations"]').click();
+
+    btn.textContent = '✅ QUEUED!';
+    setTimeout(() => { btn.disabled = false; btn.textContent = '▶ GENERATE VIDEO'; }, 2200);
+  } catch(e) {
+    showToast('❌ Hata: ' + e.message);
+    btn.disabled = false;
+    btn.textContent = '▶ GENERATE VIDEO';
+  }
+});
+
+// ── Create job card (Generations) ──
+function createJobCard(jobId, prompt, model, duration, resolution, file) {
+  document.getElementById('empty-state').style.display = 'none';
+
+  activeJobs[jobId] = { prompt, model, duration, resolution };
+  persistActiveJobs();
+  updateGenCount();
+
+  const thumbUrl = file ? URL.createObjectURL(file) : '';
+
+  const card = document.createElement('div');
+  card.className = 'job-card';
+  card.id = 'job-' + jobId;
+  card.innerHTML = `
+    <div class="job-thumb">
+      ${thumbUrl ? `<img src="${thumbUrl}" alt="Thumbnail">` : ''}
+      <div class="job-status-badge badge-running" id="badge-${jobId}">PROCESSING</div>
+      <div class="job-progress"><div class="job-progress-fill" id="prog-${jobId}" style="width:2%"></div></div>
+      <button class="job-delete-btn" title="Kartı sil" aria-label="Kartı sil">✕</button>
+    </div>
+    <div class="job-body">
+      <div class="prompt-row">
+        <div class="job-prompt" title="${escapeHtml(prompt)}">${escapeHtml(prompt)}</div>
+        <button class="copy-btn" data-prompt="${escapeHtml(prompt)}" title="Promptu kopyala" aria-label="Promptu kopyala">📋</button>
+      </div>
+      <div class="job-meta">
+        <span class="meta-tag">${model === 'seedance_lite' ? 'LITE' : 'PRO'}</span>
+        <span class="meta-tag">${duration}s</span>
+        <span class="meta-tag">${resolution}</span>
+      </div>
+      <div class="job-log" id="log-${jobId}"></div>
+    </div>
+  `;
+  card.querySelector('.copy-btn').addEventListener('click', function() {
+    copyText(this.dataset.prompt);
+  });
+  card.querySelector('.job-delete-btn').addEventListener('click', () => {
+    card.remove();
+    removePersistedJob(jobId);
+    if (document.getElementById('jobs-grid').children.length === 0)
+      document.getElementById('empty-state').style.display = '';
+  });
+  document.getElementById('jobs-grid').prepend(card);
+}
+
+function updateGenCount() {
+  document.getElementById('gen-count').textContent = Object.keys(activeJobs).length;
+}
+
+// ── Poll job ──
+function pollJob(jobId, prompt, model, duration, resolution) {
+  const interval = setInterval(async () => {
+    try {
+      const res = await fetch('/status/' + jobId);
+      if (!res.ok) { clearInterval(interval); return; }
+      const data = await res.json();
+
+      // Update log
+      const logEl = document.getElementById('log-' + jobId);
+      if (logEl && data.log) {
+        logEl.innerHTML = data.log.map((l, i) =>
+          `<div class="log-line ${i === data.log.length - 1 ? 'latest' : ''}">${escapeHtml(l)}</div>`
+        ).join('');
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      // Update progress fill
+      const lastLog = data.log ? (data.log[data.log.length - 1] || '') : '';
+      const progMatch = lastLog.match(/(\d+)%/);
+      if (progMatch) {
+        const pEl = document.getElementById('prog-' + jobId);
+        if (pEl) pEl.style.width = Math.max(5, parseInt(progMatch[1])) + '%';
+      }
+
+      if (data.status === 'done' && data.cdn_url) {
+        clearInterval(interval);
+        finishJob(jobId, data.cdn_url, prompt, model, duration, resolution);
+        removePersistedJob(jobId);
+      } else if (data.status === 'error') {
+        clearInterval(interval);
+        errorJob(jobId, data.error);
+        removePersistedJob(jobId);
+      }
+    } catch(e) { /* network error, keep trying */ }
+  }, 3000);
+}
+
+// ── Finish job ──
+function finishJob(jobId, cdnUrl, prompt, model, duration, resolution) {
+  const badge = document.getElementById('badge-' + jobId);
+  if (badge) { badge.className = 'job-status-badge badge-done'; badge.textContent = 'DONE'; }
+
+  const prog = document.getElementById('prog-' + jobId);
+  if (prog) prog.style.width = '100%';
+
+  const dlHref = '/proxy_video?url=' + encodeURIComponent(cdnUrl) + '&dl=1';
+
+  // Replace thumb with video
+  const thumb = document.querySelector('#job-' + jobId + ' .job-thumb');
+  if (thumb) {
+    thumb.innerHTML = `
+      <video src="${cdnUrl}" autoplay loop muted playsinline></video>
+      <div class="job-status-badge badge-done">DONE</div>
+      <button class="expand-btn" title="Büyüt">⛶</button>
+      <button class="job-delete-btn" title="Kartı sil" aria-label="Kartı sil">✕</button>
+    `;
+    thumb.querySelector('.expand-btn').addEventListener('click', () => openModal(cdnUrl));
+    thumb.querySelector('.job-delete-btn').addEventListener('click', () => {
+      const card = document.getElementById('job-' + jobId);
+      if (card) {
+        card.remove();
+        if (document.getElementById('jobs-grid').children.length === 0)
+          document.getElementById('empty-state').style.display = '';
+        updateGenCount();
+      }
+    });
+  }
+
+  // Add download button
+  const body = document.querySelector('#job-' + jobId + ' .job-body');
+  if (body) {
+    const a = document.createElement('a');
+    a.className = 'btn-download';
+    a.href = dlHref;
+    a.download = 'morph_video.mp4';
+    a.innerHTML = '⬇ DOWNLOAD VIDEO';
+    body.appendChild(a);
+
+    // Remove log since done
+    const log = body.querySelector('.job-log');
+    if (log) log.remove();
+  }
+
+  // Save to gallery (localStorage)
+  saveToGallery({ id: jobId, prompt, model, duration, resolution, cdn_url: cdnUrl, timestamp: Date.now() });
+  showToast('🎉 Video hazır! Galeri\'ye eklendi.');
+}
+
+function errorJob(jobId, msg) {
+  const badge = document.getElementById('badge-' + jobId);
+  if (badge) { badge.className = 'job-status-badge badge-error'; badge.textContent = 'FAILED'; }
+
+  const log = document.getElementById('log-' + jobId);
+  if (log) {
+    const line = document.createElement('div');
+    line.className = 'log-line latest';
+    line.style.color = 'var(--accent2)';
+    line.textContent = '❌ ' + (msg || 'Bilinmeyen hata');
+    log.appendChild(line);
+  }
+}
+
+// ── Gallery (localStorage) ──
+const GALLERY_KEY = 'morph_gallery_v1';
+
+function loadGallery() {
+  let items = [];
+  try { items = JSON.parse(localStorage.getItem(GALLERY_KEY) || '[]'); } catch(e) {}
+  items.forEach(job => renderGalleryCard(job, false));
+  updateGalleryCount();
+}
+
+function saveToGallery(job) {
+  let items = [];
+  try { items = JSON.parse(localStorage.getItem(GALLERY_KEY) || '[]'); } catch(e) {}
+  // Deduplicate by id
+  items = items.filter(i => i.id !== job.id);
+  items.unshift(job);
+  if (items.length > 100) items = items.slice(0, 100);
+  try { localStorage.setItem(GALLERY_KEY, JSON.stringify(items)); } catch(e) {}
+  renderGalleryCard(job, true);
+  updateGalleryCount();
+}
+
+function updateGalleryCount() {
+  let items = [];
+  try { items = JSON.parse(localStorage.getItem(GALLERY_KEY) || '[]'); } catch(e) {}
+  document.getElementById('gallery-count').textContent = items.length;
+
+  const empty = document.getElementById('gallery-empty');
+  if (empty) empty.style.display = items.length > 0 ? 'none' : '';
+}
+
+function renderGalleryCard(job, prepend = true) {
+  document.getElementById('gallery-empty').style.display = 'none';
+
+  const dlHref = '/proxy_video?url=' + encodeURIComponent(job.cdn_url) + '&dl=1';
+
+  const card = document.createElement('div');
+  card.className = 'job-card';
+  card.id = 'gallery-' + job.id;
+  card.innerHTML = `
+    <div class="job-thumb">
+      <video src="${escapeHtml(job.cdn_url)}" autoplay loop muted playsinline></video>
+      <div class="job-status-badge badge-done">DONE</div>
+      <button class="expand-btn" title="Büyüt">⛶</button>
+      <button class="job-delete-btn" title="Galeriden sil" aria-label="Galeriden sil">✕</button>
+      <div class="gallery-date">${formatDate(job.timestamp)}</div>
+    </div>
+    <div class="job-body">
+      <div class="prompt-row">
+        <div class="job-prompt" title="${escapeHtml(job.prompt)}">${escapeHtml(job.prompt)}</div>
+        <button class="copy-btn" data-prompt="${escapeHtml(job.prompt)}" title="Promptu kopyala" aria-label="Promptu kopyala">📋</button>
+      </div>
+      <div class="job-meta">
+        <span class="meta-tag">${job.model === 'seedance_lite' ? 'LITE' : 'PRO'}</span>
+        <span class="meta-tag">${job.duration}s</span>
+        <span class="meta-tag">${job.resolution}</span>
+      </div>
+      <a class="btn-download" href="${dlHref}" download="morph_video.mp4">⬇ DOWNLOAD VIDEO</a>
+    </div>
+  `;
+
+  card.querySelector('.expand-btn').addEventListener('click', () => openModal(job.cdn_url));
+  card.querySelector('.copy-btn').addEventListener('click', function() {
+    copyText(this.dataset.prompt);
+  });
+  card.querySelector('.job-delete-btn').addEventListener('click', () => {
+    deleteGalleryItem(job.id);
+    card.remove();
+    updateGalleryCount();
+  });
+
+  const grid = document.getElementById('gallery-grid');
+  if (prepend) grid.prepend(card);
+  else grid.appendChild(card);
+}
+
+function deleteGalleryItem(jobId) {
+  let items = [];
+  try { items = JSON.parse(localStorage.getItem(GALLERY_KEY) || '[]'); } catch(e) {}
+  items = items.filter(i => i.id !== jobId);
+  try { localStorage.setItem(GALLERY_KEY, JSON.stringify(items)); } catch(e) {}
+}
+
+// ── Restore active jobs on page load ──
+function restoreActiveJobs() {
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(ACTIVE_JOBS_KEY) || '{}'); } catch(e) {}
+  const ids = Object.keys(saved);
+  if (ids.length === 0) return;
+
+  ids.forEach(jobId => {
+    const { prompt, model, duration, resolution } = saved[jobId];
+    // Create a placeholder card (no image file available after refresh)
+    activeJobs[jobId] = { prompt, model, duration, resolution };
+    createRestoredJobCard(jobId, prompt, model, duration, resolution);
+    pollJob(jobId, prompt, model, duration, resolution);
+  });
+  updateGenCount();
+}
+
+function createRestoredJobCard(jobId, prompt, model, duration, resolution) {
+  document.getElementById('empty-state').style.display = 'none';
+
+  const card = document.createElement('div');
+  card.className = 'job-card';
+  card.id = 'job-' + jobId;
+  card.innerHTML = `
+    <div class="job-thumb" style="display:flex;align-items:center;justify-content:center;background:var(--surface)">
+      <div style="text-align:center;opacity:0.45">
+        <div style="font-size:1.8rem;margin-bottom:0.4rem">⏳</div>
+        <div style="font-family:var(--font-mono);font-size:0.6rem;color:var(--muted);letter-spacing:0.1em">RESUMING...</div>
+      </div>
+      <div class="job-status-badge badge-running" id="badge-${jobId}">PROCESSING</div>
+      <div class="job-progress"><div class="job-progress-fill" id="prog-${jobId}" style="width:2%"></div></div>
+      <button class="job-delete-btn" title="Kartı sil" aria-label="Kartı sil">✕</button>
+    </div>
+    <div class="job-body">
+      <div class="prompt-row">
+        <div class="job-prompt" title="${escapeHtml(prompt)}">${escapeHtml(prompt)}</div>
+        <button class="copy-btn" data-prompt="${escapeHtml(prompt)}" title="Promptu kopyala" aria-label="Promptu kopyala">📋</button>
+      </div>
+      <div class="job-meta">
+        <span class="meta-tag">${model === 'seedance_lite' ? 'LITE' : 'PRO'}</span>
+        <span class="meta-tag">${duration}s</span>
+        <span class="meta-tag">${resolution}</span>
+      </div>
+      <div class="job-log" id="log-${jobId}">
+        <div class="log-line latest">🔄 Sayfa yenilendi, görev devam ediyor...</div>
+      </div>
+    </div>
+  `;
+  card.querySelector('.copy-btn').addEventListener('click', function() {
+    copyText(this.dataset.prompt);
+  });
+  card.querySelector('.job-delete-btn').addEventListener('click', () => {
+    card.remove();
+    removePersistedJob(jobId);
+    if (document.getElementById('jobs-grid').children.length === 0)
+      document.getElementById('empty-state').style.display = '';
+  });
+  document.getElementById('jobs-grid').prepend(card);
+}
+const modalVideo = document.getElementById('modal-video');
+let frameTimeInterval = null;
+
+function openModal(cdnUrl) {
+  currentCdnUrl = cdnUrl;
+  const modal = document.getElementById('video-modal');
+  modalVideo.src = cdnUrl;
+  modalVideo.load();
+  modalVideo.play().catch(() => {});
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  // Update time display
+  frameTimeInterval = setInterval(updateFrameTime, 250);
+  modalVideo.addEventListener('loadedmetadata', updateFrameTime);
+}
+
+function updateFrameTime() {
+  const t = document.getElementById('frame-time');
+  const cur = formatTime(modalVideo.currentTime);
+  const dur = isFinite(modalVideo.duration) ? formatTime(modalVideo.duration) : '?:??';
+  t.textContent = cur + ' / ' + dur;
+}
+
+function closeModal() {
+  const modal = document.getElementById('video-modal');
+  modal.classList.remove('open');
+  modalVideo.pause();
+  modalVideo.src = '';
+  document.body.style.overflow = '';
+  if (frameTimeInterval) { clearInterval(frameTimeInterval); frameTimeInterval = null; }
+}
+
+document.getElementById('modal-close').addEventListener('click', closeModal);
+
+document.getElementById('video-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal();
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+});
+
+// ── Frame extraction ──
+document.getElementById('capture-btn').addEventListener('click', async function() {
+  if (!currentCdnUrl) return;
+
+  const btn = this;
+  const currentTime = modalVideo.currentTime;
+  btn.disabled = true;
+  btn.textContent = '⏳ Extracting...';
+
+  const canvas = document.getElementById('frame-canvas');
+
+  try {
+    // Step 1: Try direct draw (works if CDN has CORS headers)
+    canvas.width  = modalVideo.videoWidth  || 1280;
+    canvas.height = modalVideo.videoHeight || 720;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(modalVideo, 0, 0);
+
+    // toDataURL throws SecurityError if canvas is tainted
+    canvas.toDataURL('image/jpeg');
+
+    // Not tainted — extract blob directly
+    canvas.toBlob(blob => {
+      if (blob) useFrameAsInput(blob, currentTime);
+      else extractViaProxy(currentTime);
+    }, 'image/jpeg', 0.92);
+
+  } catch(e) {
+    // Canvas tainted — use proxy to load video with CORS headers
+    extractViaProxy(currentTime);
+  }
+
+  btn.textContent = '📷 USE THIS FRAME AS INPUT';
+  btn.disabled = false;
+});
+
+function extractViaProxy(seekTime) {
+  return new Promise((resolve, reject) => {
+    const proxyUrl = '/proxy_video?url=' + encodeURIComponent(currentCdnUrl);
+    const tmpVideo = document.createElement('video');
+    tmpVideo.crossOrigin = 'anonymous';
+    tmpVideo.muted = true;
+    tmpVideo.preload = 'auto';
+
+    const canvas = document.getElementById('frame-canvas');
+
+    tmpVideo.addEventListener('seeked', () => {
+      try {
+        canvas.width  = tmpVideo.videoWidth  || 1280;
+        canvas.height = tmpVideo.videoHeight || 720;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(tmpVideo, 0, 0);
+        canvas.toBlob(blob => {
+          if (blob) { useFrameAsInput(blob, seekTime); resolve(); }
+          else { showToast('❌ Frame alınamadı'); reject(); }
+        }, 'image/jpeg', 0.92);
+      } catch(e) {
+        showToast('❌ Frame alınamadı: ' + e.message);
+        reject(e);
+      }
+    }, { once: true });
+
+    tmpVideo.addEventListener('loadedmetadata', () => {
+      tmpVideo.currentTime = seekTime;
+    }, { once: true });
+
+    tmpVideo.addEventListener('error', () => {
+      showToast('❌ Video proxy hatası');
+      reject(new Error('proxy error'));
+    }, { once: true });
+
+    tmpVideo.src = proxyUrl;
+    tmpVideo.load();
+  });
+}
+
+function useFrameAsInput(blob, time) {
+  const filename = 'frame_' + Math.round(time) + 's.jpg';
+  const file = new File([blob], filename, { type: 'image/jpeg' });
+  closeModal();
+  setTimeout(() => {
+    setFile(file, true);
+    showToast('📷 ' + formatTime(time) + ' anındaki frame ayarlandı!');
+  }, 300);
+}
+
+// ── Load gallery + restore active jobs on startup ──
+loadGallery();
+restoreActiveJobs();
+updateClearBtnVisibility('generations');
+
+</script>
 
 </body>
 </html>
